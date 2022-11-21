@@ -2,7 +2,7 @@
 
 docs:
 	cd docs; \
-	julia --compile=min -O0 --project=.. make.jl
+	julia --project=.. make.jl
 
 all: docs
 

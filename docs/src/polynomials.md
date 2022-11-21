@@ -1,4 +1,5 @@
 # Polynomials
+If you're not sold on macros for their expressiveness, here's something new for you. One reason why macros can be so powerful, is that they let us write little code generators for things that we normally wouldn't bother with. This means getting potentially huge performance gains. We'll work through an example where we need to compute some polynomial.
 
 ``` {.julia file=src/Polynomials.jl}
 module Polynomials
@@ -6,9 +7,11 @@ module Polynomials
 end
 ```
 
-Suppose we need to do some work with polynomials. A polynomial is a function defined by some finite power series,
+A polynomial is a function defined by some finite power series,
 
-$$f(x) = \sum_{i = 0}^{n < \infinity} c_i x^i,$$
+```math
+f(x) = \sum_{i = 0}^{n} c_i x^i,
+```
 
 where we refer to $c_i$ as the coefficients of the polynomial. We may store a polynomial as a Vector.
 
@@ -24,7 +27,28 @@ end
 function compute_vectorized(f::Polynomial{T}, x::T) where T<:Number
     sum(f.c .* x.^(0:(length(f.c)-1)))
 end
+```
 
+```@example 1
+using MacroExercises.Polynomials: Polynomial, compute_vectorized, compute_tight_loop
+
+f = Polynomial(1.0, -3.0, 2.0, -4.0, 1.5, 0.3, -0.1)
+xs = LinRange(0.0, 1.0, 100000)
+
+test_f1(n) = for _ in 1:n
+    xs .|> x -> compute_vectorized(f, x)
+end
+
+# compile
+test_f1(1)
+
+# time
+@elapsed test_f1(100)
+```
+
+A profiler reveals that most time (about 70%) is spent computing the `:^` function. We can be more efficient if we use incremental multiplication.
+
+``` {.julia #polynomials}
 function compute_tight_loop(f::Polynomial{T}, x::T) where T<:Number
     result = 0
     xpow = 1
@@ -32,16 +56,90 @@ function compute_tight_loop(f::Polynomial{T}, x::T) where T<:Number
         result += xpow * c
         xpow *= x
     end
+    result
 end
 ```
 
 ```@example 1
-using MacroExercises.Polynomials: Polynomial, compute_vectorized, compute_tight_loop
+test_f2(n) = for _ in 1:n
+    xs .|> x -> compute_tight_loop(f, x)
+end
 
-f = Polynomial(1.0, -3.0, 2.0, -4.0, 1.5, 0.3, -0.1)
+test_f2(1)
 
-@time compute_vectorized.(f, LinRange(0.0, 1.0, 1000))
-@time compute_tight_loop.(f, LinRange(0.0, 1.0, 1000))
+@elapsed test_f2(1000)
 ```
+
+So the tight loop version is an order of magnitude faster (note the sample size). Can we do better?
+
+``` {.julia #polynomials}
+function expand(f::Polynomial{T}) where T<:Number
+    :(function (x::$T)
+        r = 0; xp = 1
+        $((:(r += xp*$c; xp*=x) for c in f.c)...)
+        r
+    end)
+end
 ```
 
+What does that generated code look like?
+
+```@example 1
+using MacroExercises.Polynomials: expand
+
+expand(f)
+```
+
+Now, test it for speed:
+
+```@example 1
+f_unroll = eval(expand(f))
+test_f3(n) = for _ in 1:n
+    f_unroll.(xs)
+end
+
+test_f3(1)
+@elapsed test_f3(1000)
+```
+
+That is another ten times faster. I think that is really amazing. For reference, here is the C++ equivalent of the tight loop version. I had to try really hard to make it not optimize away results that weren't used afterwards.
+
+``` {.cpp file=src/polynomials.cpp}
+#include <vector>
+#include <iostream>
+#include <chrono>
+
+double compute_tight_loop(std::vector<double> &cs, double x) {
+    double r = 0.0;
+    double xp = 1.0;
+    for (auto c : cs) {
+        r += xp * c;
+        xp *= x;
+    }
+    return r;
+}
+
+int main() {
+    using std::chrono::duration_cast;
+    using std::chrono::milliseconds;
+
+    std::vector<double> c{1.0, -3.0, 2.0, -4.0, 1.5, 0.3, -0.1};
+    std::cout << compute_tight_loop(c, 10.0) << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+    double grant_total = 0.0;
+    for (unsigned i = 0; i < 1000; ++i) {
+        double total = 0.0;
+        for (unsigned j = 0; j < 100000; ++j) {
+            double x = j / 100000.0;
+            total += compute_tight_loop(c, x);
+        }
+        grant_total += total / 100000;
+    }
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::cout << "total: " << grant_total << std::endl
+              << "duration: " << duration_cast<milliseconds>(stop - start) << std::endl;
+    return 0;
+}
+```
+
+This gives me about 300ms on my laptop, against 120ms for the Julia version. So how could Julia be faster than C++? We were able to compile our polynomial code for a specific polynomial on the fly, creating a function that does not need to access memory. The equivalent in C++ would be to generate code and pass that through GCC and then run it: that is insane.

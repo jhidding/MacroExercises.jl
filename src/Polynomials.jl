@@ -13,7 +13,8 @@ end
 function compute_vectorized(f::Polynomial{T}, x::T) where T<:Number
     sum(f.c .* x.^(0:(length(f.c)-1)))
 end
-
+# ~\~ end
+# ~\~ begin <<docs/src/polynomials.md|polynomials>>[1]
 function compute_tight_loop(f::Polynomial{T}, x::T) where T<:Number
     result = 0
     xpow = 1
@@ -21,6 +22,16 @@ function compute_tight_loop(f::Polynomial{T}, x::T) where T<:Number
         result += xpow * c
         xpow *= x
     end
+    result
+end
+# ~\~ end
+# ~\~ begin <<docs/src/polynomials.md|polynomials>>[2]
+function expand(f::Polynomial{T}) where T<:Number
+    :(function (x::$T)
+        r = 0; xp = 1
+        $((:(r += xp*$c; xp*=x) for c in f.c)...)
+        r
+    end)
 end
 # ~\~ end
 end

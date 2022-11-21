@@ -2,3 +2,6 @@ name = "MacroExercises"
 uuid = "9312e4ea-bfd0-48b3-bdcd-b9395a1f683f"
 authors = ["Johan Hidding <j.hidding@esciencecenter.nl>"]
 version = "0.1.0"
+
+[deps]
+ProfileView = "c46f51b8-102a-5cf2-8d2c-8597cb0e0da7"
