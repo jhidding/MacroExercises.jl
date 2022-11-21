@@ -29,6 +29,8 @@ function compute_vectorized(f::Polynomial{T}, x::T) where T<:Number
 end
 ```
 
+The notation in `compute_vectorized` is very compact, and it closely mimics the actual function definition that we gave for a polynomial. Is it also fast?
+
 ```@example 1
 using MacroExercises.Polynomials: Polynomial, compute_vectorized, compute_tight_loop
 
@@ -70,7 +72,7 @@ test_f2(1)
 @elapsed test_f2(1000)
 ```
 
-So the tight loop version is an order of magnitude faster (note the sample size). Can we do better?
+So the tight loop version is an order of magnitude faster (note the sample size). Can we do better? Now it starts to get interesting! We'll generate code as if we unroll the for-loop for a specific case of a polynomial manualy.
 
 ``` {.julia #polynomials}
 function expand(f::Polynomial{T}) where T<:Number
