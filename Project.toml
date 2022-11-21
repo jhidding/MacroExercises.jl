@@ -4,4 +4,4 @@ authors = ["Johan Hidding <j.hidding@esciencecenter.nl>"]
 version = "0.1.0"
 
 [deps]
-ProfileView = "c46f51b8-102a-5cf2-8d2c-8597cb0e0da7"
+
