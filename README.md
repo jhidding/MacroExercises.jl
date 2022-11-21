@@ -5,6 +5,6 @@ See [https://jhidding.github.io/MacroExercises.jl](https://jhidding.github.io/Ma
 
 Ideas I have:
 
-[x] Compute some polynomial that was given at runtime. (Julia beats reasonable C++ by a factor of three)
-[ ] Encode/Decode structs to/from JSON, including schema validation
-[ ] Geometric algebra: derive multiplication rules on the fly
+- [x] Compute some polynomial that was given at runtime. (Julia beats reasonable C++ by a factor of three)
+- [ ] Encode/Decode structs to/from JSON, including schema validation
+- [ ] Geometric algebra: derive multiplication rules on the fly
