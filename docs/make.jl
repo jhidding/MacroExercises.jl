@@ -13,7 +13,7 @@ function is_markdown(path)
 end
 
 sources = filter(is_markdown, readdir("./src", join=true))
-path = mktempdir()
+path = mktempdir(".")
 noweb_label_pass.(sources, path)
 
 makedocs(source = joinpath(path, "src"), sitename="Exercises in writing macros for Julia")
