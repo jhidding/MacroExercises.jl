@@ -31,7 +31,7 @@ end
 
 The notation in `compute_vectorized` is very compact, and it closely mimics the actual function definition that we gave for a polynomial. Is it also fast?
 
-```@example 1
+```julia
 using MacroExercises.Polynomials: Polynomial, compute_vectorized, compute_tight_loop
 
 f = Polynomial(1.0, -3.0, 2.0, -4.0, 1.5, 0.3, -0.1)
@@ -48,7 +48,7 @@ test_f1(1)
 @elapsed test_f1(100)
 ```
 
-A profiler reveals that most time (about 70%) is spent computing the `:^` function. We can be more efficient if we use incremental multiplication.
+On my machine this takes about two seconds. A profiler reveals that most time (about 70%) is spent computing the `:^` function. We can be more efficient if we use incremental multiplication.
 
 ``` {.julia #polynomials}
 function compute_tight_loop(f::Polynomial{T}, x::T) where T<:Number
@@ -62,7 +62,7 @@ function compute_tight_loop(f::Polynomial{T}, x::T) where T<:Number
 end
 ```
 
-```@example 1
+```julia
 test_f2(n) = for _ in 1:n
     xs .|> x -> compute_tight_loop(f, x)
 end
@@ -72,7 +72,7 @@ test_f2(1)
 @elapsed test_f2(1000)
 ```
 
-So the tight loop version is an order of magnitude faster (note the sample size). Can we do better? Now it starts to get interesting! We'll generate code as if we unroll the for-loop for a specific case of a polynomial manualy.
+This takes about three seconds on my machine, so the tight loop version is an order of magnitude faster (note the sample size). Can we do better? Now it starts to get interesting! We'll generate code as if we unroll the for-loop for a specific case of a polynomial manualy.
 
 ``` {.julia #polynomials}
 function expand(f::Polynomial{T}) where T<:Number
@@ -87,14 +87,14 @@ end
 What does that generated code look like?
 
 ```@example 1
-using MacroExercises.Polynomials: expand
+using MacroExercises.Polynomials: Polynomial, expand
 
-expand(f)
+expand(Polynomial(1.0, 0.5, 0.333))
 ```
 
 Now, test it for speed:
 
-```@example 1
+```julia
 f_unroll = eval(expand(f))
 test_f3(n) = for _ in 1:n
     f_unroll.(xs)
@@ -104,14 +104,14 @@ test_f3(1)
 @elapsed test_f3(1000)
 ```
 
-That is another ten times faster. I think that is really amazing. For reference, here is the C++ equivalent of the tight loop version. I had to try really hard to make it not optimize away results that weren't used afterwards.
+For me this computes in 0.12 seconds. That is 25 times faster than the dynamic `tight_loop` version. I think that is really amazing. For reference, here is the C++ equivalent of the tight loop version. I had to try really hard to make it not optimize away results that weren't used afterwards.
 
 ``` {.cpp file=src/polynomials.cpp}
 #include <vector>
 #include <iostream>
 #include <chrono>
 
-double compute_tight_loop(std::vector<double> &cs, double x) {
+double compute_tight_loop(std::vector<double> const &cs, double x) {
     double r = 0.0;
     double xp = 1.0;
     for (auto c : cs) {

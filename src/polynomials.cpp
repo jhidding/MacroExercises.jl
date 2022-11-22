@@ -4,7 +4,7 @@
 #include <iostream>
 #include <chrono>
 
-double compute_tight_loop(std::vector<double> &cs, double x) {
+double compute_tight_loop(std::vector<double> const &cs, double x) {
     double r = 0.0;
     double xp = 1.0;
     for (auto c : cs) {
