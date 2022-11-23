@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Polynomials · Exercises in writing macros for Julia</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">Exercises in writing macros for Julia</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Exercises in macro writing</a></li><li class="is-active"><a class="tocitem" href>Polynomials</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Polynomials</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Polynomials</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/jhidding/MacroExercises.jl/blob/main/docs/jl_n7XHby/src/polynomials.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Polynomials"><a class="docs-heading-anchor" href="#Polynomials">Polynomials</a><a id="Polynomials-1"></a><a class="docs-heading-anchor-permalink" href="#Polynomials" title="Permalink"></a></h1><p>If you&#39;re not sold on macros for their expressiveness, here&#39;s something new for you. One reason why macros can be so powerful, is that they let us write little code generators for things that we normally wouldn&#39;t bother with. This means getting potentially huge performance gains. We&#39;ll work through an example where we need to compute some polynomial.</p><div class="noweb-label">file:<i>src/Polynomials.jl</i></div><pre><code class="language- julia hljs">module Polynomials
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Polynomials · Exercises in writing macros for Julia</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">Exercises in writing macros for Julia</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Exercises in macro writing</a></li><li class="is-active"><a class="tocitem" href>Polynomials</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Polynomials</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Polynomials</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/jhidding/MacroExercises.jl/blob/main/docs/jl_8cQwEc/src/polynomials.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Polynomials"><a class="docs-heading-anchor" href="#Polynomials">Polynomials</a><a id="Polynomials-1"></a><a class="docs-heading-anchor-permalink" href="#Polynomials" title="Permalink"></a></h1><p>If you&#39;re not sold on macros for their expressiveness, here&#39;s something new for you. One reason why macros can be so powerful, is that they let us write little code generators for things that we normally wouldn&#39;t bother with. This means getting potentially huge performance gains. We&#39;ll work through an example where we need to compute some polynomial.</p><div class="noweb-label">file:<i>src/Polynomials.jl</i></div><pre><code class="language- julia hljs">module Polynomials
 &lt;&lt;polynomials&gt;&gt;
 end</code></pre><p>A polynomial is a function defined by some finite power series,</p><p class="math-container">\[f(x) = \sum_{i = 0}^{n} c_i x^i,\]</p><p>where we refer to <span>$c_i$</span> as the coefficients of the polynomial. We may store a polynomial as a Vector.</p><div class="noweb-label">⪡polynomials⪢≣</div><pre><code class="language- julia hljs">struct Polynomial{T}
     c::Vector{T}
@@ -40,45 +40,34 @@ test_f2(1)
 
 @elapsed test_f2(1000)</code></pre><p>This takes about three seconds on my machine, so the tight loop version is an order of magnitude faster (note the sample size). Can we do better? Now it starts to get interesting! We&#39;ll generate code as if we unroll the for-loop for a specific case of a polynomial manualy.</p><div class="noweb-label">⪡polynomials⪢⊞</div><pre><code class="language- julia hljs">function expand(f::Polynomial{T}) where T&lt;:Number
     :(function (x::$T)
-        r = 0; xp = 1
-        $((:(r += xp*$c; xp*=x) for c in f.c)...)
-        r
+        r = $(f.c[1])
+        xp = x
+        $((:(r += xp*$c; xp*=x) for c in f.c[2:end-1])...)
+        r + xp * $(f.c[end])
     end)
 end</code></pre><p>What does that generated code look like?</p><pre><code class="language-julia hljs">using MacroExercises.Polynomials: Polynomial, expand
 
-expand(Polynomial(1.0, 0.5, 0.333))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">:(function (x::Float64,)
-      #= /home/runner/work/MacroExercises.jl/MacroExercises.jl/src/Polynomials.jl:30 =#
-      #= /home/runner/work/MacroExercises.jl/MacroExercises.jl/src/Polynomials.jl:31 =#
-      r = 0
-      #= /home/runner/work/MacroExercises.jl/MacroExercises.jl/src/Polynomials.jl:31 =#
-      xp = 1
-      #= /home/runner/work/MacroExercises.jl/MacroExercises.jl/src/Polynomials.jl:32 =#
-      begin
-          r += xp * 1.0
-          #= /home/runner/work/MacroExercises.jl/MacroExercises.jl/src/Polynomials.jl:32 =#
-          xp *= x
-      end
+Base.remove_linenums!(
+    expand(Polynomial(1.0, 0.5, 0.333, 0.25)))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">:(function (x::Float64,)
+      r = 1.0
+      xp = x
       begin
           r += xp * 0.5
-          #= /home/runner/work/MacroExercises.jl/MacroExercises.jl/src/Polynomials.jl:32 =#
           xp *= x
       end
       begin
           r += xp * 0.333
-          #= /home/runner/work/MacroExercises.jl/MacroExercises.jl/src/Polynomials.jl:32 =#
           xp *= x
       end
-      #= /home/runner/work/MacroExercises.jl/MacroExercises.jl/src/Polynomials.jl:33 =#
-      r
+      r + xp * 0.25
   end)</code></pre><p>Now, test it for speed:</p><pre><code class="language-julia hljs">f_unroll = eval(expand(f))
-test_f3(n) = for _ in 1:n
-    f_unroll.(xs)
-end
-
+test_f3(n) = sum(sum(f_unroll.(xs)) for _ in 1:n)
 test_f3(1)
 @elapsed test_f3(1000)</code></pre><p>For me this computes in 0.12 seconds. That is 25 times faster than the dynamic <code>tight_loop</code> version. I think that is really amazing. For reference, here is the C++ equivalent of the tight loop version. I had to try really hard to make it not optimize away results that weren&#39;t used afterwards.</p><div class="noweb-label">file:<i>src/polynomials.cpp</i></div><pre><code class="language- cpp hljs">#include &lt;vector&gt;
 #include &lt;iostream&gt;
 #include &lt;chrono&gt;
+#include &lt;algorithm&gt;
+#include &lt;numeric&gt;
 
 double compute_tight_loop(std::vector&lt;double&gt; const &amp;cs, double x) {
     double r = 0.0;
@@ -93,21 +82,20 @@ double compute_tight_loop(std::vector&lt;double&gt; const &amp;cs, double x) {
 int main() {
     using std::chrono::duration_cast;
     using std::chrono::milliseconds;
+    using std::accumulate;
 
     std::vector&lt;double&gt; c{1.0, -3.0, 2.0, -4.0, 1.5, 0.3, -0.1};
     std::cout &lt;&lt; compute_tight_loop(c, 10.0) &lt;&lt; std::endl;
+    std::vector&lt;double&gt; input(100000), output(100000);
+    for (unsigned i = 0; i &lt; 100000; ++i) { input[i] = i / 100000.0; }
     auto start = std::chrono::high_resolution_clock::now();
     double grant_total = 0.0;
     for (unsigned i = 0; i &lt; 1000; ++i) {
-        double total = 0.0;
-        for (unsigned j = 0; j &lt; 100000; ++j) {
-            double x = j / 100000.0;
-            total += compute_tight_loop(c, x);
-        }
-        grant_total += total / 100000;
+        for (unsigned j = 0; j &lt; 100000; ++j) { output[j] = compute_tight_loop(c, input[j]); }
+        grant_total += accumulate(output.begin(), output.end(), 0.0);
     }
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout &lt;&lt; &quot;total: &quot; &lt;&lt; grant_total &lt;&lt; std::endl
               &lt;&lt; &quot;duration: &quot; &lt;&lt; duration_cast&lt;milliseconds&gt;(stop - start) &lt;&lt; std::endl;
     return 0;
-}</code></pre><p>This gives me about 300ms on my laptop, against 120ms for the Julia version. So how could Julia be faster than C++? We were able to compile our polynomial code for a specific polynomial on the fly, creating a function that does not need to access memory. The equivalent in C++ would be to generate code and pass that through GCC and then run it: that is insane.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Exercises in macro writing</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Tuesday 22 November 2022 20:45">Tuesday 22 November 2022</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+}</code></pre><p>This gives me about 300ms on my laptop, against 120ms for the Julia version. So how could Julia be faster than C++? We were able to compile our polynomial code for a specific polynomial on the fly, creating a function that does not need to access memory. The equivalent in C++ would be to generate code and pass that through GCC and then run it: that is insane.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Exercises in macro writing</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Wednesday 23 November 2022 12:07">Wednesday 23 November 2022</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
