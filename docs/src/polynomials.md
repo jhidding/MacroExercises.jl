@@ -77,9 +77,10 @@ This takes about three seconds on my machine, so the tight loop version is an or
 ``` {.julia #polynomials}
 function expand(f::Polynomial{T}) where T<:Number
     :(function (x::$T)
-        r = 0; xp = 1
-        $((:(r += xp*$c; xp*=x) for c in f.c)...)
-        r
+        r = $(f.c[1])
+        xp = x
+        $((:(r += xp*$c; xp*=x) for c in f.c[2:end-1])...)
+        r + xp * $(f.c[end])
     end)
 end
 ```
@@ -89,17 +90,15 @@ What does that generated code look like?
 ```@example 1
 using MacroExercises.Polynomials: Polynomial, expand
 
-expand(Polynomial(1.0, 0.5, 0.333))
+Base.remove_linenums!(
+    expand(Polynomial(1.0, 0.5, 0.333, 0.25)))
 ```
 
 Now, test it for speed:
 
 ```julia
 f_unroll = eval(expand(f))
-test_f3(n) = for _ in 1:n
-    f_unroll.(xs)
-end
-
+test_f3(n) = sum(sum(f_unroll.(xs)) for _ in 1:n)
 test_f3(1)
 @elapsed test_f3(1000)
 ```
@@ -110,6 +109,8 @@ For me this computes in 0.12 seconds. That is 25 times faster than the dynamic `
 #include <vector>
 #include <iostream>
 #include <chrono>
+#include <algorithm>
+#include <numeric>
 
 double compute_tight_loop(std::vector<double> const &cs, double x) {
     double r = 0.0;
@@ -124,18 +125,17 @@ double compute_tight_loop(std::vector<double> const &cs, double x) {
 int main() {
     using std::chrono::duration_cast;
     using std::chrono::milliseconds;
+    using std::accumulate;
 
     std::vector<double> c{1.0, -3.0, 2.0, -4.0, 1.5, 0.3, -0.1};
     std::cout << compute_tight_loop(c, 10.0) << std::endl;
+    std::vector<double> input(100000), output(100000);
+    for (unsigned i = 0; i < 100000; ++i) { input[i] = i / 100000.0; }
     auto start = std::chrono::high_resolution_clock::now();
     double grant_total = 0.0;
     for (unsigned i = 0; i < 1000; ++i) {
-        double total = 0.0;
-        for (unsigned j = 0; j < 100000; ++j) {
-            double x = j / 100000.0;
-            total += compute_tight_loop(c, x);
-        }
-        grant_total += total / 100000;
+        for (unsigned j = 0; j < 100000; ++j) { output[j] = compute_tight_loop(c, input[j]); }
+        grant_total += accumulate(output.begin(), output.end(), 0.0);
     }
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << "total: " << grant_total << std::endl

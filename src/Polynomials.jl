@@ -28,9 +28,10 @@ end
 # ~\~ begin <<docs/src/polynomials.md|polynomials>>[2]
 function expand(f::Polynomial{T}) where T<:Number
     :(function (x::$T)
-        r = 0; xp = 1
-        $((:(r += xp*$c; xp*=x) for c in f.c)...)
-        r
+        r = $(f.c[1])
+        xp = x
+        $((:(r += xp*$c; xp*=x) for c in f.c[2:end-1])...)
+        r + xp * $(f.c[end])
     end)
 end
 # ~\~ end
