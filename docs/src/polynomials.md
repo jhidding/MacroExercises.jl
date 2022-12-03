@@ -145,3 +145,110 @@ int main() {
 ```
 
 This gives me about 300ms on my laptop, against 120ms for the Julia version. So how could Julia be faster than C++? We were able to compile our polynomial code for a specific polynomial on the fly, creating a function that does not need to access memory. The equivalent in C++ would be to generate code and pass that through GCC and then run it: that is insane.
+
+## Horner's method
+There is a more efficient way to evaluate a polynomial, called Horner's method (thanks Nicos Pitsianis for pointing it out to me). Let's implement it and compare. The method works by starting at the highest order coefficient.
+
+``` {.julia #polynomials}
+function horner(f::Polynomial{T}) where T<:Number
+    r = :($(f.c[end]))
+    for c in reverse(f.c[1:end-1])
+        r = :($r * x + $c)
+    end
+    :(function (x::$T)
+        $r
+    end)
+end
+```
+
+This function also uses a recursion to grow the expression, creating somewhat pretier code.
+
+```@example 1
+using MacroExercises.Polynomials: horner
+
+Base.remove_linenums!(
+    horner(Polynomial(1.0, 0.5, 0.333, 0.25)))
+```
+
+So, how do they compare?
+
+```@repl
+using MacroExercises.Polynomials: Polynomial, expand, horner
+using BenchmarkTools
+f = Polynomial((1.0 ./ factorial.(0:11))...)
+xs = collect(LinRange(0.0, 1.0, 1000))  # make sure to collect
+f_unroll = eval(expand(f))
+f_unroll(1.0)  # should be close to e
+f_horner = eval(horner(f))
+f_horner(1.0)
+@benchmark xs .|> f_unroll
+@benchmark xs .|> f_horner
+```
+
+I don't know what this benchmark will do on the Github servers, but on my laptop this gives 1.466μs and 1.346μs minimum runtime. So Horner's method gives me close to 10% speed-up. Let's compare this with the C++ code, using a better benchmarking tool (`google-benchmark` in this case)!
+
+The difference is a bit less than my previous amateurish attempt at a benchmark, but a real difference is still there: 1.692μs for Horner's method.
+
+``` {.cpp file=src/horner.cpp}
+#include <benchmark/benchmark.h>
+#include <vector>
+
+constexpr unsigned ORDER = 11;
+constexpr unsigned N = 1000;
+
+double polynome(std::vector<double> const &cs, double x) {
+    double r = cs.front();
+    double xp = x;
+    for (unsigned i = 1; i < cs.size() - 1; ++i) {
+        r += xp * cs[i];
+        xp *= x;
+    }
+    r += xp * cs.back();
+    return r;
+}
+
+double horner(std::vector<double> const &cs, double x) {
+    double r = cs.back();
+    for (unsigned i = 1; i < cs.size(); ++i)
+        r = r * x + cs[cs.size() - 1 - i];
+    return r;
+}
+
+struct BMSetup {
+    std::vector<double> xs, ys;
+    std::vector<double> cs;
+
+    BMSetup(): xs(N), ys(N), cs(ORDER+1) {
+        for (unsigned i = 0; i < N; ++i)
+            xs[i] = i / double(N);
+        unsigned j = 1;
+        cs[0] = 1.0;
+        for (unsigned i = 1; i < ORDER+1; ++i, j *= i)
+            cs[i] = 1.0 / double(j);
+    }
+};
+
+static void bm_horner(benchmark::State &state) {
+    BMSetup setup{};
+    for (auto _ : state) {
+        for (unsigned i = 0; i < N; ++i) {
+            setup.ys[i] = horner(setup.cs, setup.xs[i]);
+        }
+    }
+}
+
+BENCHMARK(bm_horner);
+
+static void bm_polynome(benchmark::State &state) {
+    BMSetup setup{};
+    for (auto _ : state) {
+        for (unsigned i = 0; i < N; ++i) {
+            setup.ys[i] = polynome(setup.cs, setup.xs[i]);
+        }
+    }
+}
+
+BENCHMARK(bm_polynome);
+
+BENCHMARK_MAIN();
+```

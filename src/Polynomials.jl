@@ -35,5 +35,16 @@ function expand(f::Polynomial{T}) where T<:Number
     end)
 end
 # ~\~ end
+# ~\~ begin <<docs/src/polynomials.md|polynomials>>[3]
+function horner(f::Polynomial{T}) where T<:Number
+    r = :($(f.c[end]))
+    for c in reverse(f.c[1:end-1])
+        r = :($r * x + $c)
+    end
+    :(function (x::$T)
+        $r
+    end)
+end
+# ~\~ end
 end
 # ~\~ end
